@@ -57,14 +57,12 @@ function Registro() {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        // Registro exitoso
-        alert("Registro exitoso. Ahora puedes iniciar sesión.");
-        navigate("/");
-      } else {
-        // Mostrar error del servidor
-        setError(data.detail || data.message || "Error al registrarse");
-      }
+      if (response.ok) {
+      alert("Registro exitoso. Ahora puedes iniciar sesión.");
+  navigate("/");
+} else {
+  setError(data.detail || data.message || "Error al registrarse");
+}
     } catch (error) {
       console.error("Error de conexión:", error);
       setError("No se pudo conectar con el servidor. Verifica que el backend esté corriendo.");
