@@ -1,63 +1,68 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react"; 
 import "./Eventos.css";
 
 function Eventos() {
   const navigate = useNavigate();
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [eventosData, setEventosData] = useState<{ id_event: number; name_event: string; id_building: number; timedate_event: string; status_event: number; id_profe: number; id_user: number; }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ id_user: number; name_user: string; }[]>([]);
+  const [edificios, setEdificios] = useState<{ id_building: number; name_building: string; }[]>([]);
+  const [profesores, setProfesores] = useState<{ id_profe: number; nombre_profe: string; }[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({ name_event: "", id_building: "", timedate_event: "", id_profe: "", id_user: "" });
+  const [formError, setFormError] = useState("");
 
-  // Datos de ejemplo para los eventos
-  const eventosData = [
-    {
-      id: 1,
-      nombre: "Auditorio",
-      edificio: "Edificio A",
-      fecha: "2024-03-15 10:00",
-      status: "Activo",
-      profesor: "Dr. García",
-      usuario: "Administrador"
-    },
-    {
-      id: 2,
-      nombre: "Edificio K",
-      edificio: "Edificio K",
-      fecha: "2024-03-16 14:00",
-      status: "Activo",
-      profesor: "Dr. Martínez",
-      usuario: "Admin"
-    },
-    {
-      id: 3,
-      nombre: "Edificio C",
-      edificio: "Edificio C",
-      fecha: "2024-03-17 09:00",
-      status: "Activo",
-      profesor: "Dra. López",
-      usuario: "Admin"
-    },
-    {
-      id: 4,
-      nombre: "Edificio J",
-      edificio: "Edificio J",
-      fecha: "2024-03-18 11:00",
-      status: "Activo",
-      profesor: "Dr. Rodríguez",
-      usuario: "Admin"
-    },
-    {
-      id: 5,
-      nombre: "Edificio I",
-      edificio: "Edificio I",
-      fecha: "2024-03-19 15:00",
-      status: "Activo",
-      profesor: "Dr. Sánchez",
-      usuario: "Admin"
+  useEffect(() => {
+    fetchEventos();
+    fetchUsuarios();
+    fetchEdificios();
+    fetchProfesores();
+  }, []);
+
+  const fetchEventos = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/eventos');
+      const data = await response.json();
+      setEventosData(data);
+    } catch (error) {
+      console.error('Error fetching eventos:', error);
     }
-  ];
+  };
+
+  const fetchUsuarios = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/usuarios');
+      const data = await response.json();
+      setUsuarios(data);
+    } catch (error) {
+      console.error('Error fetching usuarios:', error);
+    }
+  };
+
+  const fetchEdificios = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/edificios');
+      const data = await response.json();
+      setEdificios(data);
+    } catch (error) {
+      console.error('Error fetching edificios:', error);
+    }
+  };
+
+  const fetchProfesores = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/profesores');
+      const data = await response.json();
+      setProfesores(data);
+    } catch (error) {
+      console.error('Error fetching profesores:', error);
+    }
+  };
 
   const handleLogout = () => {
-    // ✅ Limpiar localStorage
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     
@@ -69,9 +74,123 @@ function Eventos() {
   };
 
   const filteredEventos = eventosData.filter(evento =>
-    evento.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    evento.edificio.toLowerCase().includes(searchTerm.toLowerCase())
+    evento.name_event.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveEvento = async () => {
+    // Validar campos
+    if (!formData.name_event || !formData.id_building || !formData.timedate_event || !formData.id_profe || !formData.id_user) {
+      setFormError("Por favor, completa todos los campos");
+      return;
+    }
+
+    setFormError("");
+    try {
+      const url = editingId ? `http://localhost:5000/api/eventos/${editingId}` : 'http://localhost:5000/api/eventos';
+      const method = editingId ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name_event: formData.name_event,
+          id_building: parseInt(formData.id_building),
+          timedate_event: formData.timedate_event,
+          id_profe: parseInt(formData.id_profe),
+          id_user: parseInt(formData.id_user)
+        })
+      });
+      if (response.ok) {
+        setShowModal(false);
+        setEditingId(null);
+        setFormData({ name_event: "", id_building: "", timedate_event: "", id_profe: "", id_user: "" });
+        setFormError("");
+        fetchEventos();
+      }
+    } catch (error) {
+      console.error('Error saving evento:', error);
+      setFormError("Error al guardar el evento");
+    }
+  };
+
+  const handleEditClick = (evento: typeof eventosData[0]) => {
+    setEditingId(evento.id_event);
+    // Formatear la fecha para el input datetime-local (YYYY-MM-DDTHH:mm)
+    const formattedDate = evento.timedate_event.replace(' ', 'T').substring(0, 16);
+    setFormData({
+      name_event: evento.name_event,
+      id_building: evento.id_building.toString(),
+      timedate_event: formattedDate,
+      id_profe: evento.id_profe.toString(),
+      id_user: evento.id_user.toString()
+    });
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setFormData({ name_event: "", id_building: "", timedate_event: "", id_profe: "", id_user: "" });
+    setFormError("");
+  };
+
+  const getNombreEdificio = (id: number) => {
+    const edificio = edificios.find(e => e.id_building === id);
+    return edificio ? edificio.name_building : `Edificio ${id}`;
+  };
+
+  const getNombreProfesor = (id: number) => {
+    const profesor = profesores.find(p => p.id_profe === id);
+    return profesor ? profesor.nombre_profe : `Profesor ${id}`;
+  };
+
+  const getNombreUsuario = (id: number) => {
+    const usuario = usuarios.find(u => u.id_user === id);
+    return usuario ? usuario.name_user : `Usuario ${id}`;
+  };
+
+  const handleToggleStatus = async (evento: typeof eventosData[0]) => {
+    try {
+      const newStatus = evento.status_event === 1 ? 0 : 1;
+      const response = await fetch(`http://localhost:5000/api/eventos/${evento.id_event}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name_event: evento.name_event,
+          id_building: evento.id_building,
+          timedate_event: evento.timedate_event,
+          id_profe: evento.id_profe,
+          id_user: evento.id_user,
+          status_event: newStatus
+        })
+      });
+      if (response.ok) {
+        fetchEventos();
+      }
+    } catch (error) {
+      console.error('Error toggling status:', error);
+    }
+  };
+
+  const handleDeleteEvento = async (id: number) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este evento?')) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/eventos/${id}`, {
+          method: 'DELETE'
+        });
+        if (response.ok) {
+          fetchEventos();
+        }
+      } catch (error) {
+        console.error('Error deleting evento:', error);
+      }
+    }
+  };
 
   return (
     <div className="eventos-container">
@@ -172,7 +291,7 @@ function Eventos() {
           <div className="content-header">
             <div className="header-left">
               <h2 className="content-title">Eventos</h2>
-              <button className="btn-primary">
+              <button className="btn-primary" onClick={() => setShowModal(true)}>
                 Agregar
               </button>
             </div>
@@ -215,26 +334,36 @@ function Eventos() {
               </thead>
               <tbody>
                 {filteredEventos.map((evento) => (
-                  <tr key={evento.id}>
-                    <td className="cell-name">{evento.nombre}</td>
-                    <td>{evento.edificio}</td>
-                    <td>{evento.fecha}</td>
-                    <td>{evento.profesor}</td>
-                    <td>{evento.usuario}</td>
+                  <tr key={evento.id_event}>
+                    <td className="cell-name">{evento.name_event}</td>
+                    <td>{getNombreEdificio(evento.id_building)}</td>
+                    <td>{evento.timedate_event}</td>
+                    <td>{getNombreProfesor(evento.id_profe)}</td>
+                    <td>{getNombreUsuario(evento.id_user)}</td>
                     <td>
-                      <span className="status-badge">{evento.status}</span>
+                      <span className={`status-badge ${evento.status_event === 0 ? "status-inactive" : "status-active"}`}>
+                        {evento.status_event === 0 ? "Inactivo" : "Activo"}
+                      </span>
                     </td>
                     <td className="cell-actions">
-                      <button className="action-btn" title="Editar">
+                      <button className="action-btn" title="Editar" onClick={() => handleEditClick(evento)}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </button>
-                      <button className="action-btn" title="Toggle Status">
+                      <button className={`action-btn ${evento.status_event === 0 ? "action-btn-disabled" : ""}`} title="Toggle Status" onClick={() => handleToggleStatus(evento)}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <rect x="1" y="5" width="22" height="14" rx="7" ry="7"/>
                           <circle cx="16" cy="12" r="3"/>
+                        </svg>
+                      </button>
+                      <button className="action-btn action-btn-delete" title="Eliminar" onClick={() => handleDeleteEvento(evento.id_event)}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          <line x1="10" y1="11" x2="10" y2="17"/>
+                          <line x1="14" y1="11" x2="14" y2="17"/>
                         </svg>
                       </button>
                     </td>
@@ -250,6 +379,89 @@ function Eventos() {
           </div>
         </div>
       </main>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingId ? 'Editar Evento' : 'Crear Nuevo Evento'}</h3>
+              <button className="modal-close" onClick={handleCloseModal}>✕</button>
+            </div>
+            <div className="modal-body">
+              {formError && <div className="form-error">{formError}</div>}
+              <div className="form-group">
+                <label>Nombre del Evento</label>
+                <input
+                  type="text"
+                  name="name_event"
+                  value={formData.name_event}
+                  onChange={handleInputChange}
+                  placeholder="Ej: Auditorio"
+                />
+              </div>
+              <div className="form-group">
+                <label>Edificio</label>
+                <select
+                  name="id_building"
+                  value={formData.id_building}
+                  onChange={(e) => setFormData(prev => ({ ...prev, id_building: e.target.value }))}
+                >
+                  <option value="">Seleccionar edificio</option>
+                  {edificios.map(edificio => (
+                    <option key={edificio.id_building} value={edificio.id_building}>
+                      {edificio.name_building}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Fecha y Hora</label>
+                <input
+                  type="datetime-local"
+                  name="timedate_event"
+                  value={formData.timedate_event}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="form-group">
+                <label>Profesor</label>
+                <select
+                  name="id_profe"
+                  value={formData.id_profe}
+                  onChange={(e) => setFormData(prev => ({ ...prev, id_profe: e.target.value }))}
+                >
+                  <option value="">Seleccionar profesor</option>
+                  {profesores.map(profesor => (
+                    <option key={profesor.id_profe} value={profesor.id_profe}>
+                      {profesor.nombre_profe}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Usuario</label>
+                <select
+                  name="id_user"
+                  value={formData.id_user}
+                  onChange={(e) => setFormData(prev => ({ ...prev, id_user: e.target.value }))}
+                >
+                  <option value="">Seleccionar usuario</option>
+                  {usuarios.map(usuario => (
+                    <option key={usuario.id_user} value={usuario.id_user}>
+                      {usuario.name_user}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={handleCloseModal}>Cancelar</button>
+              <button className="btn-submit" onClick={handleSaveEvento}>{editingId ? 'Actualizar' : 'Crear'} Evento</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
