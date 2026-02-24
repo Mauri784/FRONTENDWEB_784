@@ -1,6 +1,26 @@
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 import re
+from datetime import datetime
+
+class EventoBase(BaseModel):
+    name_event: str
+    id_building: Optional[int] = None
+    timedate_event: Optional[datetime] = None
+    status_event: Optional[int] = 1
+    id_profe: Optional[int] = None
+    id_user: Optional[int] = None
+
+
+class EventoCreate(EventoBase):
+    pass
+
+
+class EventoResponse(EventoBase):
+    id_event: int
+
+    class Config:
+        from_attributes = True
 
 class LoginRequest(BaseModel):
     email_user: EmailStr
@@ -11,7 +31,7 @@ class RegisterRequest(BaseModel):
     email_user: EmailStr
     pass_user: str
     matricula_user: int
-    id_rol: int = 2
+    id_rol: int 
 
     @field_validator("pass_user")
     @classmethod
@@ -42,6 +62,7 @@ class UserResponse(BaseModel):
     email_user: str
     matricula_user: Optional[int]
     rol: str
+    id_rol: int
 
 class LoginResponse(BaseModel):
     success: bool

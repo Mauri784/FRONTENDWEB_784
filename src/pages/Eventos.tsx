@@ -1,20 +1,58 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react"; 
+import { useState, useEffect } from "react";
 import "./Eventos.css";
+
+import {
+  getEventos,
+  createEvento,
+  updateEvento,
+  deleteEvento,
+} from "../services/Eventos";
 
 function Eventos() {
   const navigate = useNavigate();
+
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [eventosData, setEventosData] = useState<{ id_event: number; name_event: string; id_building: number; timedate_event: string; status_event: number; id_profe: number; id_user: number; }[]>([]);
-  const [usuarios, setUsuarios] = useState<{ id_user: number; name_user: string; }[]>([]);
-  const [edificios, setEdificios] = useState<{ id_building: number; name_building: string; }[]>([]);
-  const [profesores, setProfesores] = useState<{ id_profe: number; nombre_profe: string; }[]>([]);
+
+  const [eventosData, setEventosData] = useState<
+    {
+      id_event: number;
+      name_event: string;
+      id_building: number;
+      timedate_event: string;
+      status_event: number;
+      id_profe: number;
+      id_user: number;
+    }[]
+  >([]);
+
+  const [usuarios, setUsuarios] = useState<
+    { id_user: number; name_user: string }[]
+  >([]);
+
+  const [edificios, setEdificios] = useState<
+    { id_building: number; name_building: string }[]
+  >([]);
+
+  const [profesores, setProfesores] = useState<
+    { id_profe: number; nombre_profe: string }[]
+  >([]);
+
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ name_event: "", id_building: "", timedate_event: "", id_profe: "", id_user: "" });
+
+  const [formData, setFormData] = useState({
+    name_event: "",
+    id_building: "",
+    timedate_event: "",
+    id_profe: "",
+    id_user: "",
+  });
+
   const [formError, setFormError] = useState("");
 
+  // ✅ Cargar datos al iniciar
   useEffect(() => {
     fetchEventos();
     fetchUsuarios();
@@ -22,174 +60,193 @@ function Eventos() {
     fetchProfesores();
   }, []);
 
+  // ===============================
+  // ✅ FETCHES
+  // ===============================
+
   const fetchEventos = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/eventos');
-      const data = await response.json();
+      const data = await getEventos();
       setEventosData(data);
     } catch (error) {
-      console.error('Error fetching eventos:', error);
+      console.error("Error cargando eventos:", error);
     }
   };
 
   const fetchUsuarios = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/usuarios');
+      const response = await fetch("http://localhost:8000/api/usuarios");
       const data = await response.json();
       setUsuarios(data);
     } catch (error) {
-      console.error('Error fetching usuarios:', error);
+      console.error("Error cargando usuarios:", error);
     }
   };
 
   const fetchEdificios = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/edificios');
+      const response = await fetch("http://localhost:8000/api/edificios");
       const data = await response.json();
       setEdificios(data);
     } catch (error) {
-      console.error('Error fetching edificios:', error);
+      console.error("Error cargando edificios:", error);
     }
   };
 
   const fetchProfesores = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/profesores');
+      const response = await fetch("http://localhost:8000/api/profesores");
       const data = await response.json();
       setProfesores(data);
     } catch (error) {
-      console.error('Error fetching profesores:', error);
+      console.error("Error cargando profesores:", error);
     }
   };
+
+  // ===============================
+  // ✅ LOGOUT
+  // ===============================
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
-    
-    // Cerrar el menú
+
     setShowLogoutMenu(false);
-    
-    // Redirigir a login
     navigate("/", { replace: true });
   };
 
-  const filteredEventos = eventosData.filter(evento =>
+  // ===============================
+  // ✅ FILTRO
+  // ===============================
+
+  const filteredEventos = eventosData.filter((evento) =>
     evento.name_event.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ===============================
+  // ✅ FORMULARIO
+  // ===============================
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveEvento = async () => {
-    // Validar campos
-    if (!formData.name_event || !formData.id_building || !formData.timedate_event || !formData.id_profe || !formData.id_user) {
-      setFormError("Por favor, completa todos los campos");
-      return;
-    }
+  // ===============================
+  // ✅ GUARDAR EVENTO (CREATE / UPDATE)
+  // ===============================
 
+  const handleSaveEvento = async () => {
     setFormError("");
+
     try {
-      const url = editingId ? `http://localhost:5000/api/eventos/${editingId}` : 'http://localhost:5000/api/eventos';
-      const method = editingId ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name_event: formData.name_event,
-          id_building: parseInt(formData.id_building),
-          timedate_event: formData.timedate_event,
-          id_profe: parseInt(formData.id_profe),
-          id_user: parseInt(formData.id_user)
-        })
-      });
-      if (response.ok) {
-        setShowModal(false);
-        setEditingId(null);
-        setFormData({ name_event: "", id_building: "", timedate_event: "", id_profe: "", id_user: "" });
-        setFormError("");
-        fetchEventos();
+      const payload = {
+        name_event: formData.name_event,
+        id_building: parseInt(formData.id_building),
+        timedate_event: formData.timedate_event,
+        id_profe: parseInt(formData.id_profe),
+        id_user: parseInt(formData.id_user),
+      };
+
+      if (editingId) {
+        await updateEvento(editingId, payload);
+      } else {
+        await createEvento(payload);
       }
+
+      setShowModal(false);
+      setEditingId(null);
+
+      setFormData({
+        name_event: "",
+        id_building: "",
+        timedate_event: "",
+        id_profe: "",
+        id_user: "",
+      });
+
+      fetchEventos();
     } catch (error) {
-      console.error('Error saving evento:', error);
+      console.error("Error guardando evento:", error);
       setFormError("Error al guardar el evento");
     }
   };
 
+  // ===============================
+  // ✅ EDITAR
+  // ===============================
+
   const handleEditClick = (evento: typeof eventosData[0]) => {
     setEditingId(evento.id_event);
-    // Formatear la fecha para el input datetime-local (YYYY-MM-DDTHH:mm)
-    const formattedDate = evento.timedate_event.replace(' ', 'T').substring(0, 16);
+
+    const formattedDate = evento.timedate_event
+      .replace(" ", "T")
+      .substring(0, 16);
+
     setFormData({
       name_event: evento.name_event,
       id_building: evento.id_building.toString(),
       timedate_event: formattedDate,
       id_profe: evento.id_profe.toString(),
-      id_user: evento.id_user.toString()
+      id_user: evento.id_user.toString(),
     });
+
     setShowModal(true);
   };
+
+  // ===============================
+  // ✅ ELIMINAR
+  // ===============================
+
+  const handleDeleteEvento = async (id: number) => {
+    if (!window.confirm("¿Eliminar evento?")) return;
+
+    try {
+      await deleteEvento(id);
+      fetchEventos();
+    } catch (error) {
+      console.error("Error eliminando evento:", error);
+    }
+  };
+
+  // ===============================
+  // ✅ CERRAR MODAL
+  // ===============================
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormData({ name_event: "", id_building: "", timedate_event: "", id_profe: "", id_user: "" });
+
+    setFormData({
+      name_event: "",
+      id_building: "",
+      timedate_event: "",
+      id_profe: "",
+      id_user: "",
+    });
+
     setFormError("");
   };
 
+  // ===============================
+  // ✅ HELPERS
+  // ===============================
+
   const getNombreEdificio = (id: number) => {
-    const edificio = edificios.find(e => e.id_building === id);
+    const edificio = edificios.find((e) => e.id_building === id);
     return edificio ? edificio.name_building : `Edificio ${id}`;
   };
 
   const getNombreProfesor = (id: number) => {
-    const profesor = profesores.find(p => p.id_profe === id);
+    const profesor = profesores.find((p) => p.id_profe === id);
     return profesor ? profesor.nombre_profe : `Profesor ${id}`;
   };
 
   const getNombreUsuario = (id: number) => {
-    const usuario = usuarios.find(u => u.id_user === id);
+    const usuario = usuarios.find((u) => u.id_user === id);
     return usuario ? usuario.name_user : `Usuario ${id}`;
-  };
-
-  const handleToggleStatus = async (evento: typeof eventosData[0]) => {
-    try {
-      const newStatus = evento.status_event === 1 ? 0 : 1;
-      const response = await fetch(`http://localhost:5000/api/eventos/${evento.id_event}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name_event: evento.name_event,
-          id_building: evento.id_building,
-          timedate_event: evento.timedate_event,
-          id_profe: evento.id_profe,
-          id_user: evento.id_user,
-          status_event: newStatus
-        })
-      });
-      if (response.ok) {
-        fetchEventos();
-      }
-    } catch (error) {
-      console.error('Error toggling status:', error);
-    }
-  };
-
-  const handleDeleteEvento = async (id: number) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este evento?')) {
-      try {
-        const response = await fetch(`http://localhost:5000/api/eventos/${id}`, {
-          method: 'DELETE'
-        });
-        if (response.ok) {
-          fetchEventos();
-        }
-      } catch (error) {
-        console.error('Error deleting evento:', error);
-      }
-    }
   };
 
   return (

@@ -30,7 +30,7 @@ function Login() {
 
       if (response.ok && data.success) {
         // Verificar que el usuario sea Administrador
-        if (data.user.rol !== "Administrador") {
+        if (data.user.rol !== "Admin") {
           setError("Acceso denegado. Solo los administradores pueden iniciar sesión.");
           setLoading(false);
           return;

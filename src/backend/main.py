@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from models import LoginRequest, RegisterRequest, LoginResponse, UserResponse
 from database import get_db_connection
+from eventos_router import router as eventos_router
 
 from security import (
     verify_password,
@@ -11,6 +12,8 @@ from security import (
 )
 
 app = FastAPI()
+
+app.include_router(eventos_router)
 
 # ============================
 # 🌍 Configuración CORS
@@ -36,12 +39,13 @@ async def login(credentials: LoginRequest):
     cursor = db.cursor(dictionary=True)
 
     cursor.execute("""
-        SELECT u.id_user, u.name_user, u.email_user, u.pass_user,
-               u.matricula_user, r.name_rol
-        FROM usuarios u
-        JOIN rol r ON u.id_rol = r.id_rol
-        WHERE u.email_user = %s
-    """, (credentials.email_user,))
+    SELECT u.id_user, u.name_user, u.email_user, u.pass_user,
+           u.matricula_user, u.id_rol, r.name_rol
+    FROM usuarios u
+    JOIN rol r ON u.id_rol = r.id_rol
+    WHERE u.email_user = %s
+""", (credentials.email_user,))
+
 
     user = cursor.fetchone()
     cursor.close()
@@ -56,16 +60,18 @@ async def login(credentials: LoginRequest):
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
 
     return LoginResponse(
-        success=True,
-        message="Login exitoso",
-        user=UserResponse(
-            id_user=user["id_user"],
-            name_user=user["name_user"],
-            email_user=user["email_user"],
-            matricula_user=user["matricula_user"],
-            rol=user["name_rol"]
-        )
+    success=True,
+    message="Login exitoso",
+    user=UserResponse(
+        id_user=user["id_user"],
+        name_user=user["name_user"],
+        email_user=user["email_user"],
+        matricula_user=user["matricula_user"],
+        id_rol=user["id_rol"],      
+        rol=user["name_rol"]
     )
+)
+
 
 # ============================
 # 📝 REGISTER
@@ -108,6 +114,7 @@ async def register(user_data: RegisterRequest):
 
     return {"success": True, "message": "Usuario registrado correctamente"}
 
+app.include_router(eventos_router)
 
 # ============================
 # 🚀 Run local
